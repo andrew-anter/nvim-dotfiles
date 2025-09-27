@@ -908,7 +908,7 @@ require('lazy').setup({
       ---@diagnostic disable-next-line: missing-fields
       require('tokyonight').setup {
         style = 'night',
-        transparent = true,
+        transparent = false,
 
         on_highlights = function(hl, c)
           local prompt = '#2d3149'
@@ -955,7 +955,8 @@ require('lazy').setup({
   { 'folke/todo-comments.nvim', event = 'VimEnter', dependencies = { 'nvim-lua/plenary.nvim' }, opts = { signs = false } },
 
   { -- Collection of various small independent plugins/modules
-    'echasnovski/mini.nvim',
+    'nvim-mini/mini.nvim',
+    version = false,
     config = function()
       -- Better Around/Inside textobjects
       --
@@ -971,6 +972,20 @@ require('lazy').setup({
       -- - sd'   - [S]urround [D]elete [']quotes
       -- - sr)'  - [S]urround [R]eplace [)] [']
       require('mini.surround').setup()
+      require('mini.comment').setup()
+      local gen_loader = require('mini.snippets').gen_loader
+      require('mini.snippets').setup {
+        snippets = {
+          -- Load custom file with global snippets first
+          gen_loader.from_file '~/.config/nvim/snippets/global.json',
+
+          -- Load snippets based on current language by reading files from
+          -- "snippets/" subdirectories from 'runtimepath' directories.
+          gen_loader.from_lang(),
+        },
+      }
+      require('mini.diff').setup()
+      require('mini.completion').setup()
 
       -- Simple and easy statusline.
       --  You could remove this setup call if you don't like it,
