@@ -181,7 +181,14 @@ vim.o.confirm = true
 vim.keymap.set('n', '<Esc>', '<cmd>nohlsearch<CR>')
 
 -- Diagnostic keymaps
-vim.keymap.set('n', '<leader>d', vim.diagnostic.setloclist, { desc = 'Open diagnostic [Q]uickfix list' })
+vim.keymap.set('n', '<leader>d', function()
+  local qf_winid = vim.fn.getloclist(0, { winid = 0 }).winid
+  if qf_winid > 0 and vim.api.nvim_win_is_valid(qf_winid) then
+    vim.cmd.lclose()
+  else
+    vim.diagnostic.setloclist()
+  end
+end, { desc = 'Toggle [d]iagnostic list' })
 
 -- Exit terminal mode in the builtin terminal with a shortcut that is a bit easier
 -- for people to discover. Otherwise, you normally need to press <C-\><C-n>, which
