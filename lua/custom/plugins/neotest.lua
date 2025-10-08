@@ -16,6 +16,11 @@ return {
             runner = 'pytest',
           },
         },
+        summary = {
+          -- This tells neotest to open the summary in a new vertical split
+          -- on the bottom right, with a width of 40 columns.
+          open = 'botright 50vsplit',
+        },
       }
     end,
   },
