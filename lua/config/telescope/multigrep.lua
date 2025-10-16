@@ -49,7 +49,7 @@ local live_multigrep = function(opts)
 end
 
 M.setup = function()
-  vim.keymap.set('n', '<leader>sfm', live_multigrep)
+  vim.keymap.set('n', '<leader>sfm', live_multigrep, { desc = 'Live Multigrep' })
 end
 
 return M
