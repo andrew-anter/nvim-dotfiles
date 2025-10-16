@@ -14,6 +14,7 @@ return {
           require 'neotest-python' {
             -- Tell neotest to use pytest
             runner = 'pytest',
+            extra_args = { '--cov' },
           },
         },
         summary = {
