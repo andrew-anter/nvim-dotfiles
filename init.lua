@@ -146,7 +146,6 @@ vim.o.splitbelow = true
 vim.opt.tabstop = 4
 vim.opt.shiftwidth = 4
 vim.opt.expandtab = true
-vim.opt.textwidth = 100
 
 -- Sets how neovim will display certain whitespace characters in the editor.
 --  See `:help 'list'`
@@ -755,14 +754,18 @@ require('lazy').setup({
         'dockerls',
         'yamlls',
         'marksman', -- For markdown
-        'nginx_language_server',
+        'nginx-language-server',
+        'bash-language-server',
+        'htmx-lsp',
+        'tailwindcss-language-server',
+        'django-template-lsp',
 
         -- Linters
         'ruff',
 
         -- Formatters
         'prettierd',
-        'djlint', -- For Django Templates
+        'djlint',
       })
       require('mason-tool-installer').setup { ensure_installed = ensure_installed }
 
@@ -816,7 +819,7 @@ require('lazy').setup({
       formatters_by_ft = {
         lua = { 'stylua' },
         -- Conform can also run multiple formatters sequentially
-        -- python = { "isort", "black" },
+        python = { 'ruff' },
         --
         -- You can use 'stop_after_first' to run the first available formatter from the list
         -- javascript = { "prettierd", "prettier", stop_after_first = true },

@@ -26,4 +26,12 @@ return {
   keys = {
     { '<leader>e', '<cmd>Oil<cr>', desc = '[E]xplore files.' },
   },
+  config = function()
+    require('oil').setup {
+      -- This is the key setting. It should be true by default,
+      -- but it's good to be explicit.
+      default_file_explorer = true,
+      -- Your other oil.nvim configuration options go here
+    }
+  end,
 }

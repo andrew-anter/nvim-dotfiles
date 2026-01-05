@@ -1,0 +1,78 @@
+{
+  "Django Model": {
+    "prefix": "djmodel",
+    "body": [
+      "class ${1:ModelName}(models.Model):",
+      "    \"\"\"",
+      "    ${2:Represents a $1 in the system.}",
+      "    \"\"\"",
+      "    ${3:field_name} = models.CharField(max_length=255)",
+      "    created_at = models.DateTimeField(auto_now_add=True)",
+      "    updated_at = models.DateTimeField(auto_now=True)",
+      "",
+      "    class Meta:",
+      "        ordering = ['-created_at']",
+      "        verbose_name = _('${1:ModelName}')",
+      "",
+      "    def __str__(self):",
+      "        return str(self.id)"
+    ]
+  },
+  "Django Service": {
+    "prefix": "djservice",
+    "body": [
+      "def ${1:service_name}(${2:param_name}: ${3:type}) -> ${4:return_type}:",
+      "    \"\"\"",
+      "    ${5:Brief description of the service logic.}",
+      "",
+      "    Args:",
+      "        ${2:param_name}: ${6:Description of the parameter.}",
+      "",
+      "    Returns:",
+      "        ${4:return_type}: ${7:Description of the return value.}",
+      "    \"\"\"",
+      "    with transaction.atomic():",
+      "        $0"
+    ]
+  },
+  "Django View FBV": {
+    "prefix": "djview",
+    "body": [
+      "@require_POST",
+      "def ${1:view_name}(request):",
+      "    \"\"\"",
+      "    ${2:Endpoint to handle $1.}",
+      "",
+      "    Args:",
+      "        request: The Django HttpRequest object.",
+      "",
+      "    Returns:",
+      "        JsonResponse: Success or error status.",
+      "    \"\"\"",
+      "    data = request.POST",
+      "    ${3:result} = ${4:service_call}()",
+      "    return JsonResponse({\"status\": \"success\", \"data\": ${3:result}})"
+    ]
+  },
+  "Celery Task": {
+    "prefix": "cjtask",
+    "body": [
+      "@shared_task(bind=True, max_retries=3)",
+      "def ${1:task_name}(self, ${2:pk}: int):",
+      "    \"\"\"",
+      "    ${3:Asynchronous task to process $1.}",
+      "",
+      "    Args:",
+      "        self: Task instance for retries.",
+      "        ${2:pk}: Primary key of the ${4:ModelName} instance.",
+      "    \"\"\"",
+      "    try:",
+      "        obj = ${4:ModelName}.objects.get(pk=${2:pk})",
+      "        $0",
+      "    except ${4:ModelName}.DoesNotExist:",
+      "        return f\"$4 {${2:pk}} not found\"",
+      "    except Exception as exc:",
+      "        raise self.retry(exc=exc, countdown=60)"
+    ]
+  }
+}
