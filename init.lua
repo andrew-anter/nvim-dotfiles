@@ -757,6 +757,9 @@ require('lazy').setup({
         'yamlls',
         'marksman', -- For markdown
         'nginx_language_server',
+        'bash-language-server',
+        'dockerfile-language-server',
+        'docker-compose-language-service',
 
         -- Linters
         'ruff',
