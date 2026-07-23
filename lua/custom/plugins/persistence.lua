@@ -1,8 +1,5 @@
-return {
-  'folke/persistence.nvim',
-  event = 'BufReadPre', -- this will only start session saving when an actual file was opened
-  opts = {
-    dir = vim.fn.stdpath 'data' .. '/sessions/', -- 📂 The directory where sessions are stored
-    options = { 'buffers', 'curdir', 'tabpages', 'winsize', 'help', 'globals' },
-  },
+vim.pack.add { { src = 'https://github.com/folke/persistence.nvim', version = vim.version.range '3.*' } }
+require('persistence').setup {
+  dir = vim.fn.stdpath 'data' .. '/sessions/',
+  options = { 'buffers', 'curdir', 'tabpages', 'winsize', 'help', 'globals' },
 }

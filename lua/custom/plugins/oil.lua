@@ -1,10 +1,5 @@
-return {
-  'stevearc/oil.nvim',
-  ---@module 'oil'
-  ---@type oil.SetupOpts
-  opts = {},
-  dependencies = { { 'echasnovski/mini.icons', opts = {} } },
-  lazy = false,
+vim.pack.add { { src = 'https://github.com/stevearc/oil.nvim', version = vim.version.range '5.*' } }
+require('oil').setup {
   keymaps = {
     ['g?'] = { 'actions.show_help', mode = 'n' },
     ['<CR>'] = 'actions.select',
@@ -23,7 +18,5 @@ return {
     ['g.'] = { 'actions.toggle_hidden', mode = 'n' },
     ['g\\'] = { 'actions.toggle_trash', mode = 'n' },
   },
-  keys = {
-    { '<leader>e', '<cmd>Oil<cr>', desc = '[E]xplore files.' },
-  },
 }
+vim.keymap.set('n', '<leader>e', '<cmd>Oil<cr>', { desc = '[E]xplore files.' })

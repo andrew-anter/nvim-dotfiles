@@ -1,28 +1,20 @@
-return {
-  {
-    'nvim-neotest/neotest',
-    dependencies = {
-      'nvim-neotest/nvim-nio',
-      'nvim-lua/plenary.nvim',
-      'antoinemadec/FixCursorHold.nvim',
-      'nvim-treesitter/nvim-treesitter',
-      'nvim-neotest/neotest-python', -- The adapter for Python
+vim.pack.add { { src = 'https://github.com/nvim-neotest/neotest', version = vim.version.range '6.*' } }
+vim.pack.add { { src = 'https://github.com/nvim-neotest/nvim-nio', version = vim.version.range '1.*' } }
+vim.pack.add { { src = 'https://github.com/nvim-neotest/neotest-python', version = vim.version.range '1.*' } }
+vim.pack.add { 'https://github.com/nvim-neotest/neotest-go' }
+
+require('neotest').setup {
+  adapters = {
+    require 'neotest-python' {
+      runner = 'pytest',
+      extra_args = { '--cov' },
     },
-    config = function()
-      require('neotest').setup {
-        adapters = {
-          require 'neotest-python' {
-            -- Tell neotest to use pytest
-            runner = 'pytest',
-            extra_args = { '--cov' },
-          },
-        },
-        summary = {
-          -- This tells neotest to open the summary in a new vertical split
-          -- on the bottom right, with a width of 40 columns.
-          open = 'botright 50vsplit',
-        },
-      }
-    end,
+    require 'neotest-go' {
+      experimental = { test_table = true },
+      args = { '-count=1' },
+    },
+  },
+  summary = {
+    open = 'botright 50vsplit',
   },
 }
