@@ -238,12 +238,6 @@ do
   -- or just use <C-\><C-n> to exit terminal mode
   vim.keymap.set('t', '<Esc><Esc>', '<C-\\><C-n>', { desc = 'Exit terminal mode' })
 
-  -- TIP: Disable arrow keys in normal mode
-  vim.keymap.set('n', '<left>', '<cmd>echo "Use h to move!!"<CR>')
-  vim.keymap.set('n', '<right>', '<cmd>echo "Use l to move!!"<CR>')
-  vim.keymap.set('n', '<up>', '<cmd>echo "Use k to move!!"<CR>')
-  vim.keymap.set('n', '<down>', '<cmd>echo "Use j to move!!"<CR>')
-
   -- Keybinds to make split navigation easier.
   --  Use CTRL+<hjkl> to switch between windows
   --
@@ -849,7 +843,30 @@ do
   local servers = {
     stylua = {}, -- Used to format Lua code
     -- clangd = {},
-    -- gopls = {},
+    gopls = {
+      settings = {
+        gopls = {
+          gofumpt = true,
+          staticcheck = true,
+          usePlaceholders = true,
+          analyses = {
+            unusedparams = true,
+            unusedwrite = true,
+            useany = true,
+            nilness = true,
+            shadow = true,
+          },
+          hints = {
+            assignVariableTypes = true,
+            compositeLiteralFields = true,
+            constantValues = true,
+            functionTypeParameters = true,
+            parameterNames = true,
+            rangeVariableTypes = true,
+          },
+        },
+      },
+    },
     -- rust_analyzer = {},
 
     pyrefly = {
@@ -962,8 +979,12 @@ do
     -- Linters and formatters
     'prettierd',
     'djlint',
+    'gofumpt',
+    'goimports',
+    'golangci-lint',
     -- Other tools
     'gopls',
+    'delve',
     'yamlls',
     'marksman',
   })
@@ -1003,6 +1024,7 @@ do
       lua = { 'stylua' },
       python = { 'ruff_format', 'ruff_organize_imports' },
       htmldjango = { 'djlint' },
+      go = { 'goimports', 'gofumpt' },
     },
   }
 
@@ -1107,7 +1129,7 @@ do
   vim.pack.add { { src = gh 'nvim-treesitter/nvim-treesitter', version = 'main' } }
 
   -- Ensure basic parsers are installed
-  local parsers = { 'bash', 'c', 'diff', 'html', 'lua', 'luadoc', 'markdown', 'markdown_inline', 'query', 'vim', 'vimdoc' }
+  local parsers = { 'bash', 'c', 'diff', 'go', 'gomod', 'gowork', 'gosum', 'html', 'lua', 'luadoc', 'markdown', 'markdown_inline', 'query', 'vim', 'vimdoc' }
   require('nvim-treesitter').install(parsers)
 
   ---@param buf integer
