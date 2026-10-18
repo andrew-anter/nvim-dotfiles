@@ -375,8 +375,7 @@ require('lazy').setup({
       -- Document existing key chains
       spec = {
         { '<leader>s', group = '[S]earch' },
-        { '<leader>t', group = '[T]oggle' },
-        { '<leader>h', group = 'Git [H]unk', mode = { 'n', 'v' } },
+        { '<leader>t', group = '[T]est' },
       },
     },
   },
@@ -433,7 +432,8 @@ require('lazy').setup({
 
       -- [[ Configure Telescope ]]
       -- See `:help telescope` and `:help telescope.setup()`
-      require('telescope').setup {
+      local telescope = require 'telescope'
+      telescope.setup {
         -- You can put your default mappings / updates / etc. in here
         --  All the info you're looking for is in `:help telescope.setup()`
         --
@@ -449,6 +449,8 @@ require('lazy').setup({
           },
         },
       }
+      -- Load the extension after setup
+      telescope.load_extension 'luasnip'
 
       -- Enable Telescope extensions if they are installed
       pcall(require('telescope').load_extension, 'fzf')
@@ -458,7 +460,7 @@ require('lazy').setup({
       local builtin = require 'telescope.builtin'
       vim.keymap.set('n', '<leader>sh', builtin.help_tags, { desc = '[S]earch [H]elp' })
       vim.keymap.set('n', '<leader>sk', builtin.keymaps, { desc = '[S]earch [K]eymaps' })
-      vim.keymap.set('n', '<leader>sf', builtin.find_files, { desc = '[S]earch [F]iles' })
+      vim.keymap.set('n', '<leader>sff', builtin.find_files, { desc = '[S]earch [F]iles' })
       vim.keymap.set('n', '<leader>ss', builtin.builtin, { desc = '[S]earch [S]elect Telescope' })
       vim.keymap.set('n', '<leader>sw', builtin.grep_string, { desc = '[S]earch current [W]ord' })
       vim.keymap.set('n', '<leader>sg', builtin.live_grep, { desc = '[S]earch by [G]rep' })
@@ -563,7 +565,7 @@ require('lazy').setup({
           -- for LSP related items. It sets the mode, buffer and description for us each time.
           local map = function(keys, func, desc, mode)
             mode = mode or 'n'
-            vim.keymap.set(mode, keys, func, { buffer = event.buf, desc = 'LSP: ' .. desc })
+            vim.keymap.set(mode, keys, func, { buf = event.buf, desc = 'LSP: ' .. desc })
           end
 
           -- Rename the variable under your cursor.
@@ -584,7 +586,7 @@ require('lazy').setup({
           -- Jump to the definition of the word under your cursor.
           --  This is where a variable was first declared, or where a function is defined, etc.
           --  To jump back, press <C-t>.
-          map('grd', require('telescope.builtin').lsp_definitions, '[G]oto [D]efinition')
+          map('gd', require('telescope.builtin').lsp_definitions, '[G]oto [D]efinition')
 
           -- WARN: This is not Goto Definition, this is Goto Declaration.
           --  For example, in C this would take you to the header.
@@ -625,13 +627,13 @@ require('lazy').setup({
           if client and client_supports_method(client, vim.lsp.protocol.Methods.textDocument_documentHighlight, event.buf) then
             local highlight_augroup = vim.api.nvim_create_augroup('kickstart-lsp-highlight', { clear = false })
             vim.api.nvim_create_autocmd({ 'CursorHold', 'CursorHoldI' }, {
-              buffer = event.buf,
+              buf = event.buf,
               group = highlight_augroup,
               callback = vim.lsp.buf.document_highlight,
             })
 
             vim.api.nvim_create_autocmd({ 'CursorMoved', 'CursorMovedI' }, {
-              buffer = event.buf,
+              buf = event.buf,
               group = highlight_augroup,
               callback = vim.lsp.buf.clear_references,
             })
@@ -640,7 +642,7 @@ require('lazy').setup({
               group = vim.api.nvim_create_augroup('kickstart-lsp-detach', { clear = true }),
               callback = function(event2)
                 vim.lsp.buf.clear_references()
-                vim.api.nvim_clear_autocmds { group = 'kickstart-lsp-highlight', buffer = event2.buf }
+                vim.api.nvim_clear_autocmds { group = 'kickstart-lsp-highlight', buf = event2.buf }
               end,
             })
           end
@@ -704,7 +706,20 @@ require('lazy').setup({
       local servers = {
         -- clangd = {},
         -- gopls = {},
-        -- pyright = {},
+        basedpyright = {
+          capabilities = {
+            offsetEncoding = { 'utf-16' }, -- Keeps Ruff and LSP in sync
+          },
+          -- No `settings` overrides: basedpyright reads [tool.basedpyright]
+          -- and the .basedpyright/baseline.json from the project's pyproject.toml
+        },
+
+        ruff = {
+          capabilities = {
+            offsetEncoding = { 'utf-16' },
+            hoverProvider = false,
+          },
+        },
         -- rust_analyzer = {},
         -- ... etc. See `:help lspconfig-all` for a list of all the pre-configured LSPs
         --
@@ -729,6 +744,21 @@ require('lazy').setup({
             },
           },
         },
+
+        html = {
+          settings = {
+            html = {
+              format = {
+                indentSize = 2, -- matches this project's HTML indentation
+                wrapLineLength = 120,
+              },
+              validate = {
+                links = true, -- flags broken local hrefs/srcs in static pages
+              },
+            },
+          },
+        },
+        cssls = {},
       }
 
       -- Ensure the servers and tools above are installed
@@ -747,20 +777,19 @@ require('lazy').setup({
       local ensure_installed = vim.tbl_keys(servers or {})
       vim.list_extend(ensure_installed, {
         'stylua', -- Used to format Lua code
-        'pyright',
         'gopls',
-        'lua_ls', -- For lua-language-server
         'bashls',
         'dockerls',
         'yamlls',
         'marksman', -- For markdown
         'nginx-language-server',
-        'bash-language-server',
         'htmx-lsp',
+        'html-lsp', -- lspconfig: html
+        'css-lsp',  -- lspconfig: cssls
         'tailwindcss-language-server',
-        'django-template-lsp',
 
-        -- Linters
+        -- Python
+        'basedpyright',
         'ruff',
 
         -- Formatters
@@ -769,19 +798,20 @@ require('lazy').setup({
       })
       require('mason-tool-installer').setup { ensure_installed = ensure_installed }
 
+      -- mason-lspconfig v2 removed `handlers`/`automatic_installation`; installs are done via
+      -- mason-tool-installer above, and installed servers are auto-enabled (automatic_enable).
+      -- Server configs must be registered with the native `vim.lsp.config` API instead.
+      vim.lsp.config('*', {
+        capabilities = capabilities,
+      })
+
+      for server_name, server in pairs(servers) do
+        server.capabilities = vim.tbl_deep_extend('force', {}, capabilities, server.capabilities or {})
+        vim.lsp.config(server_name, server)
+      end
+
       require('mason-lspconfig').setup {
         ensure_installed = {}, -- explicitly set to an empty table (Kickstart populates installs via mason-tool-installer)
-        automatic_installation = false,
-        handlers = {
-          function(server_name)
-            local server = servers[server_name] or {}
-            -- This handles overriding only values explicitly passed
-            -- by the server configuration above. Useful when disabling
-            -- certain features of an LSP (for example, turning off formatting for ts_ls)
-            server.capabilities = vim.tbl_deep_extend('force', {}, capabilities, server.capabilities or {})
-            require('lspconfig')[server_name].setup(server)
-          end,
-        },
       }
     end,
   },
@@ -819,10 +849,12 @@ require('lazy').setup({
       formatters_by_ft = {
         lua = { 'stylua' },
         -- Conform can also run multiple formatters sequentially
-        python = { 'ruff' },
+        python = { 'ruff', 'ruff_organize_imports', 'ruff_format' },
         --
         -- You can use 'stop_after_first' to run the first available formatter from the list
-        -- javascript = { "prettierd", "prettier", stop_after_first = true },
+        javascript = { 'prettierd', 'prettier', stop_after_first = true },
+        html = { 'prettierd' },
+        css = { 'prettierd' },
       },
     },
   },
@@ -849,79 +881,72 @@ require('lazy').setup({
           -- `friendly-snippets` contains a variety of premade snippets.
           --    See the README about individual language/framework/plugin snippets:
           --    https://github.com/rafamadriz/friendly-snippets
-          -- {
-          --   'rafamadriz/friendly-snippets',
-          --   config = function()
-          --     require('luasnip.loaders.from_vscode').lazy_load()
-          --   end,
-          -- },
+          {
+            'rafamadriz/friendly-snippets',
+            config = function()
+              require('luasnip.loaders.from_vscode').lazy_load()
+            end,
+          },
         },
         opts = {},
+        config = function()
+          local ls = require 'luasnip'
+
+          -- This is the missing piece for Kickstart
+          require('luasnip.loaders.from_vscode').lazy_load {
+            paths = { vim.fn.expand '~/.config/nvim/snippets' },
+          }
+
+          ls.config.set_config {
+            history = true,
+            updateevents = 'TextChanged,TextChangedI',
+          }
+        end,
       },
       'folke/lazydev.nvim',
     },
     --- @module 'blink.cmp'
     --- @type blink.cmp.Config
     opts = {
+      -- 1. Keymaps (Keep only key-related settings here)
       keymap = {
-        -- 'default' (recommended) for mappings similar to built-in completions
-        --   <c-y> to accept ([y]es) the completion.
-        --    This will auto-import if your LSP supports it.
-        --    This will expand snippets if the LSP sent a snippet.
-        -- 'super-tab' for tab to accept
-        -- 'enter' for enter to accept
-        -- 'none' for no mappings
-        --
-        -- For an understanding of why the 'default' preset is recommended,
-        -- you will need to read `:help ins-completion`
-        --
-        -- No, but seriously. Please read `:help ins-completion`, it is really good!
-        --
-        -- All presets have the following mappings:
-        -- <tab>/<s-tab>: move to right/left of your snippet expansion
-        -- <c-space>: Open menu or open docs if already open
-        -- <c-n>/<c-p> or <up>/<down>: Select next/previous item
-        -- <c-e>: Hide menu
-        -- <c-k>: Toggle signature help
-        --
-        -- See :h blink-cmp-config-keymap for defining your own keymap
         preset = 'default',
-
-        -- For more advanced Luasnip keymaps (e.g. selecting choice nodes, expansion) see:
-        --    https://github.com/L3MON4D3/LuaSnip?tab=readme-ov-file#keymaps
       },
 
+      -- 2. Appearance
       appearance = {
-        -- 'mono' (default) for 'Nerd Font Mono' or 'normal' for 'Nerd Font'
-        -- Adjusts spacing to ensure icons are aligned
         nerd_font_variant = 'mono',
       },
 
+      -- 3. Completion behavior
       completion = {
-        -- By default, you may press `<c-space>` to show the documentation.
-        -- Optionally, set `auto_show = true` to show the documentation after a delay.
-        documentation = { auto_show = false, auto_show_delay_ms = 500 },
+        documentation = { auto_show = true, auto_show_delay_ms = 500 },
       },
 
+      -- 4. Sources (Moved out of keymap)
       sources = {
         default = { 'lsp', 'path', 'snippets', 'lazydev' },
         providers = {
-          lazydev = { module = 'lazydev.integrations.blink', score_offset = 100 },
+          snippets = {
+            name = 'snippets',
+            module = 'blink.cmp.sources.snippets',
+            score_offset = 100, -- High priority for your custom snippets
+          },
+          lazydev = {
+            name = 'LazyDev',
+            module = 'lazydev.integrations.blink',
+            score_offset = 100,
+          },
         },
       },
 
+      -- 5. Snippet Engine Link
       snippets = { preset = 'luasnip' },
 
-      -- Blink.cmp includes an optional, recommended rust fuzzy matcher,
-      -- which automatically downloads a prebuilt binary when enabled.
-      --
-      -- By default, we use the Lua implementation instead, but you may enable
-      -- the rust implementation via `'prefer_rust_with_warning'`
-      --
-      -- See :h blink-cmp-config-fuzzy for more information
+      -- 6. Fuzzy Matcher
       fuzzy = { implementation = 'lua' },
 
-      -- Shows a signature help window while you type arguments for a function
+      -- 7. Signature Help
       signature = { enabled = true },
     },
   },
@@ -1024,17 +1049,6 @@ require('lazy').setup({
       -- - sr)'  - [S]urround [R]eplace [)] [']
       require('mini.surround').setup()
       require('mini.comment').setup()
-      local gen_loader = require('mini.snippets').gen_loader
-      require('mini.snippets').setup {
-        snippets = {
-          -- Load custom file with global snippets first
-          gen_loader.from_file '~/.config/nvim/snippets/global.json',
-
-          -- Load snippets based on current language by reading files from
-          -- "snippets/" subdirectories from 'runtimepath' directories.
-          gen_loader.from_lang(),
-        },
-      }
       require('mini.diff').setup()
 
       -- Simple and easy statusline.
@@ -1058,28 +1072,53 @@ require('lazy').setup({
   },
   { -- Highlight, edit, and navigate code
     'nvim-treesitter/nvim-treesitter',
+    branch = 'main',
     build = ':TSUpdate',
-    main = 'nvim-treesitter.configs', -- Sets main module to use for opts
-    -- [[ Configure Treesitter ]] See `:help nvim-treesitter`
-    opts = {
-      ensure_installed = { 'bash', 'c', 'diff', 'html', 'lua', 'luadoc', 'markdown', 'markdown_inline', 'query', 'vim', 'vimdoc' },
-      -- Autoinstall languages that are not installed
-      auto_install = true,
-      highlight = {
-        enable = true,
-        -- Some languages depend on vim's regex highlighting system (such as Ruby) for indent rules.
-        --  If you are experiencing weird indenting issues, add the language to
-        --  the list of additional_vim_regex_highlighting and disabled languages for indent.
-        additional_vim_regex_highlighting = { 'ruby' },
-      },
-      indent = { enable = true, disable = { 'ruby' } },
-    },
-    -- There are additional nvim-treesitter modules that you can use to interact
-    -- with nvim-treesitter. You should go explore a few and see what interests you:
-    --
-    --    - Incremental selection: Included, see `:help nvim-treesitter-incremental-selection-mod`
-    --    - Show your current context: https://github.com/nvim-treesitter/nvim-treesitter-context
-    --    - Treesitter + textobjects: https://github.com/nvim-treesitter/nvim-treesitter-textobjects
+    config = function()
+      local ts = require 'nvim-treesitter'
+
+      -- 2. Configure Parser Installation
+      ts.setup {
+        -- setup now only supports a few basic options like install_dir
+        install_dir = vim.fn.stdpath 'data' .. '/site',
+      }
+
+      -- 3. Manually Install Parsers
+      ts.install {
+        'bash',
+        'c',
+        'css',
+        'diff',
+        'html',
+        'javascript',
+        'json',
+        'lua',
+        'luadoc',
+        'markdown',
+        'markdown_inline',
+        'python',
+        'query',
+        'toml',
+        'vim',
+        'vimdoc',
+        'yaml',
+      }
+
+      -- 4. Enable Native Highlighting & Indentation
+      -- Highlighting is now handled natively via vim.treesitter.start()
+      local ts_group = vim.api.nvim_create_augroup('kickstart-treesitter', { clear = true })
+      vim.api.nvim_create_autocmd('FileType', {
+        group = ts_group,
+        desc = 'Start treesitter highlighting and indentation',
+        callback = function(args)
+          pcall(vim.treesitter.start)
+          -- indentexpr requires an installed parser; setting it without one errors on indent
+          if pcall(vim.treesitter.get_parser, args.buf) then
+            vim.bo[args.buf].indentexpr = "v:lua.require'nvim-treesitter'.indentexpr()"
+          end
+        end,
+      })
+    end,
   },
 
   -- The following comments only work if you have downloaded the kickstart repo, not just copy pasted the
@@ -1131,5 +1170,27 @@ require('lazy').setup({
 })
 require 'core.keymaps'
 
--- The line beneath this is called `modeline`. See `:help modeline`
--- vim: ts=2 sts=2 sw=2 et
+require 'custom.project_notes'
+
+local function generate_python_init()
+  local current_file = vim.api.nvim_buf_get_name(0)
+  local dir = vim.fn.fnamemodify(current_file, ':h')
+  local init_path = dir .. '/__init__.py'
+
+  -- Using the executable name directly from PATH
+  local cmd = string.format('py-gen-init %s', vim.fn.shellescape(current_file))
+  local output = vim.fn.system(cmd)
+
+  if vim.v.shell_error == 0 and output ~= '' then
+    local f = io.open(init_path, 'w')
+    if f then
+      f:write(output)
+      f:close()
+      vim.notify('Generated __init__.py', vim.log.levels.INFO)
+    end
+  else
+    vim.notify('Error generating __init__.py', vim.log.levels.ERROR)
+  end
+end
+
+vim.keymap.set('n', '<leader>gi', generate_python_init, { desc = 'Generate __init__.py' })
