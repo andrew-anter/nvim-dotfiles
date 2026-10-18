@@ -1,3 +1,6 @@
-vim.pack.add { 'https://github.com/junegunn/vim-easy-align' }
-vim.keymap.set('x', 'ga', '<Plug>(EasyAlign)')
-vim.keymap.set('n', 'ga', '<Plug>(EasyAlign)')
+return {
+  'junegunn/vim-easy-align',
+  keys = {
+    { 'ga', '<Plug>(EasyAlign)', mode = { 'n', 'x' }, desc = '[E]asy [A]lign' },
+  },
+}

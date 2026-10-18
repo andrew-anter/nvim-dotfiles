@@ -813,6 +813,128 @@ require('lazy').setup({
       require('mason-lspconfig').setup {
         ensure_installed = {}, -- explicitly set to an empty table (Kickstart populates installs via mason-tool-installer)
       }
+
+      -- Install an LSP the first time its filetype is opened instead of eagerly at startup.
+      -- mason-lspconfig's automatic_enable picks servers up on install:success, so the
+      -- already-open buffer attaches without a restart.
+      local ft_servers = {
+        bash = { 'bashls' },
+        sh = { 'bashls' },
+        c = { 'clangd' },
+        cpp = { 'clangd' },
+        css = { 'cssls' },
+        dockerfile = { 'dockerls' },
+        go = { 'gopls' },
+        html = { 'html' },
+        javascript = { 'vtsls' },
+        javascriptreact = { 'vtsls' },
+        json = { 'jsonls' },
+        lua = { 'lua_ls' },
+        markdown = { 'marksman' },
+        python = { 'basedpyright', 'ruff' },
+        rust = { 'rust_analyzer' },
+        typescript = { 'vtsls' },
+        typescriptreact = { 'vtsls' },
+        yaml = { 'yamlls' },
+      }
+
+      local pending_installs = {}
+      -- Hold a strong reference for the duration of the install: if the last Package
+      -- object is garbage collected, its install handle is finalized and dies silently.
+      local active_packages = {}
+      local install_queue = {}
+      local registry_ready = false
+      local start_install
+
+      local function drain_queue()
+        local queue = install_queue
+        install_queue = {}
+        for _, item in ipairs(queue) do
+          start_install(item.server, item.ft, item.package_name)
+        end
+      end
+
+      function start_install(server, ft, package_name)
+        local ok, package = pcall(require('mason-registry').get_package, package_name)
+        if not ok then
+          pending_installs[package_name] = nil
+          vim.notify(('No Mason package for LSP server %s'):format(server), vim.log.levels.WARN)
+          return
+        end
+        if package:is_installed() then
+          pending_installs[package_name] = nil
+          return
+        end
+        active_packages[package_name] = package
+        -- Raw Package:install() handles get silently killed when raced by mason's startup
+        -- registry refresh; :MasonInstall is the path mason-tool-installer relies on.
+        vim.cmd(('MasonInstall %s'):format(package_name))
+        local timer = vim.uv.new_timer()
+        local function finish(notice)
+          timer:stop()
+          timer:close()
+          pending_installs[package_name] = nil
+          active_packages[package_name] = nil
+          vim.notify(notice)
+        end
+        -- Mason occasionally emits install:failed(nil) even when the install landed,
+        -- which makes mason-lspconfig's automatic_enable miss the server; poll instead.
+        timer:start(0, 2000, vim.schedule_wrap(function()
+          if package:is_installed() then
+            finish(('Installed %s to provide LSP for %s'):format(package_name, ft))
+            vim.lsp.enable(server)
+          end
+        end))
+        package:once('install:failed', function()
+          finish(('Failed to install Mason package %s'):format(package_name))
+        end)
+      end
+
+      local function install_server(server, ft)
+        local mappings = require('mason-lspconfig').get_mappings()
+        local package_name = mappings.lspconfig_to_package[server]
+        if not package_name or pending_installs[package_name] then
+          return
+        end
+        pending_installs[package_name] = true
+        table.insert(install_queue, { server = server, ft = ft, package_name = package_name })
+        if registry_ready then
+          drain_queue()
+        elseif #install_queue == 1 then
+          -- An install started before mason's startup registry refresh completes races with
+          -- that refresh, which replaces package objects and kills in-flight installs; wait
+          -- for its completion signal, falling back on a timer if it never fires (offline).
+          local done = false
+          local function unlock()
+            if done then
+              return
+            end
+            done = true
+            registry_ready = true
+            drain_queue()
+          end
+          require('mason-registry'):once('update:success', unlock)
+          vim.defer_fn(unlock, 15000)
+        end
+      end
+
+      vim.api.nvim_create_autocmd('FileType', {
+        group = vim.api.nvim_create_augroup('kickstart-lsp-auto-install', { clear = true }),
+        callback = function(args)
+          local ft = vim.bo[args.buf].filetype
+          for _, server in ipairs(ft_servers[ft] or {}) do
+            install_server(server, ft)
+          end
+        end,
+      })
+
+      -- lazy loads this spec after the first file's FileType already fired, so replay
+      -- the check for buffers that opened before this autocmd existed.
+      for _, buf in ipairs(vim.api.nvim_list_bufs()) do
+        if vim.api.nvim_buf_is_valid(buf) and vim.bo[buf].buflisted then
+          vim.api.nvim_exec_autocmds('FileType', { group = 'kickstart-lsp-auto-install', buffer = buf })
+        end
+      end
     end,
   },
 
