@@ -1,25 +1,7 @@
-return {
-  {
-    -- The core DAP plugin
-    'mfussenegger/nvim-dap',
-    dependencies = {
-      -- A UI for the debugger
-      {
-        'rcarriga/nvim-dap-ui',
-        config = function()
-          local dapui = require 'dapui'
-          dapui.setup()
-        end,
-      },
+vim.pack.add { { src = 'https://github.com/mfussenegger/nvim-dap', version = vim.version.range '0.*' } }
+vim.pack.add { { src = 'https://github.com/rcarriga/nvim-dap-ui', version = vim.version.range '4.*' } }
+vim.pack.add { { src = 'https://github.com/mfussenegger/nvim-dap-python', version = vim.version.range '0.*' } }
 
-      -- Configurations for Python debugging
-      {
-        'mfussenegger/nvim-dap-python',
-        config = function()
-          -- Make sure to install debugpy: pip install debugpy
-          require('dap-python').setup '~/.virtualenvs/debugpy/bin/python'
-        end,
-      },
-    },
-  },
-}
+require('dapui').setup()
+local py = vim.fn.expand '~/.virtualenvs/debugpy/bin/python'
+if vim.uv.fs_stat(py) then require('dap-python').setup(py) end
