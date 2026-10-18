@@ -9,4 +9,3 @@ return {
     { '<leader>e', '<cmd>Oil<cr>', desc = '[E]xplore files.' },
   },
 }
-vim.keymap.set('n', '<leader>e', '<cmd>Oil<cr>', { desc = '[E]xplore files.' })

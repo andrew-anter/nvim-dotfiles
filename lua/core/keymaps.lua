@@ -12,6 +12,8 @@ vim.keymap.set('n', '<leader>q', function()
   if qf_open then
     vim.cmd.cclose()
   else
+    -- Use :copen if you always want it to open, or :cwindow
+    -- if you only want it to open when there are errors/items.
     vim.cmd.cwindow()
   end
 end, { desc = 'Toggle Quickfix List' })
